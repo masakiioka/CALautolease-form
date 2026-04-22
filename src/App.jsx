@@ -456,7 +456,7 @@ export default function App() {
     };
   };
 
-  // メール自動送信（Vercel API Route経由）
+  // メール自動送信（PDF添付）
   const sendEmail = async (payload) => {
     setMailStatus("sending");
     try {
@@ -466,20 +466,18 @@ export default function App() {
         body: JSON.stringify({
           corp_name: payload.corp_name || "（未入力）",
           apply_date: payload.date || "",
-          payload_json: JSON.stringify(payload, null, 2),
+          payload: payload,
         }),
       });
-
       const data = await res.json();
       if (res.ok && data.success) {
         setMailStatus("success");
-        setMailMsg("担当者（masaki_ioka@carcon.co.jp）へメールを自動送信しました。\n件名：オートリースサービス審査依頼書送付について");
       } else {
         throw new Error(data.error || "送信失敗");
       }
     } catch (err) {
       setMailStatus("error");
-      setMailMsg(`メール送信に失敗しました（${err.message}）。\nJSONをダウンロードして担当者へ直接送付してください。`);
+      setMailMsg(err.message);
     }
   };
 
@@ -506,7 +504,7 @@ export default function App() {
     URL.revokeObjectURL(url);
   };
 
-  // ── 完了画面 ──────────────────────────────────────────
+  // ── 完了画面（シンプル版）──────────────────────────────
   if (done) {
     return (
       <div style={s.root}>
@@ -517,51 +515,42 @@ export default function App() {
         </div>
         <div style={s.wrap}>
           <div style={s.card}>
-            <div style={{ textAlign: "center", padding: "36px 20px" }}>
-              <div style={{ fontSize: 52, marginBottom: 12 }}>🎉</div>
-              <div style={{ fontSize: 20, fontWeight: 700, color: "#0d2b45", marginBottom: 8 }}>入力完了</div>
-              <div style={{ fontSize: 12, color: "#6a8098", marginBottom: 20, lineHeight: 1.8 }}>
-                入力データをダウンロードして、本部担当者へ送付してください。
-              </div>
-
-              {mailStatus && (
-                <div style={s.mailBox(mailStatus)}>
-                  {mailStatus === "sending" && "📧 処理中..."}
-                  {mailStatus === "success" && `✅ ${mailMsg}`}
-                  {mailStatus === "error" && `❌ ${mailMsg}`}
-                </div>
+            <div style={{ textAlign: "center", padding: "60px 20px" }}>
+              {mailStatus === "sending" && (
+                <>
+                  <div style={{ fontSize: 48, marginBottom: 16 }}>📧</div>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: "#0d2b45", marginBottom: 8 }}>送信中...</div>
+                  <div style={{ fontSize: 13, color: "#6a8098" }}>審査依頼書PDFをメールで送信しています。しばらくお待ちください。</div>
+                </>
               )}
-
-              <div style={{ marginTop: 24, display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
-                <button style={s.dlBtn} onClick={downloadJson}>⬇️ JSONデータをダウンロード</button>
-                <button style={{ ...s.dlBtn, background: "linear-gradient(135deg, #1a6e3c, #27ae60)" }}
-                  onClick={() => { setDone(false); setStep(0); setMailStatus(null); setExportJson(null); }}>
-                  ← 新規入力に戻る
-                </button>
-              </div>
-
-              <div style={{ marginTop: 24, textAlign: "left", background: "#f4f7fb", borderRadius: 8, padding: "16px 20px" }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "#0d2b45", marginBottom: 8 }}>📋 次のステップ（本部担当者向け）</div>
-                <div style={{ fontSize: 11, color: "#4a6a80", lineHeight: 2 }}>
-                  1. JSONデータをダウンロード<br />
-                  2. <code style={{ background: "#e8eef5", padding: "1px 5px", borderRadius: 3 }}>generate_excel.py</code> と <code style={{ background: "#e8eef5", padding: "1px 5px", borderRadius: 3 }}>template.xlsx</code> を同じフォルダに配置<br />
-                  3. 以下のコマンドを実行（LibreOffice が必要）
-                </div>
-                <div style={{ background: "#1a2a3a", color: "#7ec8e3", padding: "10px 14px", borderRadius: 6, fontSize: 11, marginTop: 8, fontFamily: "monospace" }}>
-                  python3 generate_excel.py -i 審査依頼書データ.json -x 審査依頼書.xlsx -p 審査依頼書.pdf
-                </div>
-                <div style={{ fontSize: 10, color: "#7a96b0", marginTop: 10, lineHeight: 1.8 }}>
-                  📧 送信先：<strong>masaki_ioka@carcon.co.jp</strong><br />
-                  📄 件名：オートリースサービス審査依頼書送付について
-                </div>
-              </div>
-
-              <details style={{ marginTop: 16, textAlign: "left" }}>
-                <summary style={{ fontSize: 11, color: "#8fa8c0", cursor: "pointer" }}>JSONデータを確認する</summary>
-                <pre style={{ background: "#f0f4f8", borderRadius: 7, padding: "12px 14px", fontSize: 10, color: "#2a3a4a", overflow: "auto", marginTop: 6, maxHeight: 240, textAlign: "left" }}>
-                  {exportJson}
-                </pre>
-              </details>
+              {mailStatus === "success" && (
+                <>
+                  <div style={{ fontSize: 64, marginBottom: 20 }}>✅</div>
+                  <div style={{ fontSize: 24, fontWeight: 700, color: "#0d2b45", marginBottom: 12 }}>送信完了</div>
+                  <div style={{ fontSize: 13, color: "#6a8098", lineHeight: 1.9 }}>
+                    審査依頼書（PDF）を担当者へ送信しました。<br />
+                    <strong>masaki_ioka@carcon.co.jp</strong>
+                  </div>
+                  <button
+                    style={{ ...s.dlBtn, marginTop: 36, background: "linear-gradient(135deg, #1a6e3c, #27ae60)" }}
+                    onClick={() => { setDone(false); setStep(0); setMailStatus(null); }}>
+                    ← 新規入力に戻る
+                  </button>
+                </>
+              )}
+              {mailStatus === "error" && (
+                <>
+                  <div style={{ fontSize: 48, marginBottom: 16 }}>❌</div>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: "#c0392b", marginBottom: 8 }}>送信エラー</div>
+                  <div style={{ fontSize: 12, color: "#6a8098", marginBottom: 24 }}>{mailMsg}</div>
+                  <button style={s.dlBtn} onClick={downloadJson}>⬇️ JSONをダウンロード</button>
+                  <button
+                    style={{ ...s.dlBtn, marginTop: 12, background: "linear-gradient(135deg, #1a6e3c, #27ae60)" }}
+                    onClick={() => { setDone(false); setStep(0); setMailStatus(null); }}>
+                    ← 戻る
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
