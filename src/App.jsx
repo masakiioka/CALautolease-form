@@ -456,37 +456,30 @@ export default function App() {
     };
   };
 
-  // メール送信：CORSエラーを避けるためEmailJS形式に変更
+  // メール自動送信（Vercel API Route経由）
   const sendEmail = async (payload) => {
     setMailStatus("sending");
     try {
-      const corpName = payload.corp_name || "（法人名未入力）";
-      const today = payload.date || new Date().toLocaleDateString("ja-JP");
+      const res = await fetch("/api/send-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          corp_name: payload.corp_name || "（未入力）",
+          apply_date: payload.date || "",
+          payload_json: JSON.stringify(payload, null, 2),
+        }),
+      });
 
-      // EmailJS を使ってメール送信（CORSなし）
-      const emailData = {
-        service_id: "service_carcon",
-        template_id: "template_autolease",
-        user_id: "YOUR_EMAILJS_PUBLIC_KEY",
-        template_params: {
-          to_email: "masaki_ioka@carcon.co.jp",
-          subject: "オートリースサービス審査依頼書送付について",
-          corp_name: corpName,
-          apply_date: today,
-          message: `カーコンカーリース新プランの取り扱いを希望する加盟店より、オートリースサービスの審査依頼書が提出されました。\n\n■ 申込法人名：${corpName}\n■ 申込日：${today}\n\nセディナオートリースへの審査依頼手続きをお願いいたします。`,
-        },
-      };
-
-      // EmailJSが未設定の場合はスキップしてJSON保存案内のみ表示
-      setMailStatus("success");
-      setMailMsg(
-        `入力が完了しました。\nJSONデータをダウンロードし、担当者（masaki_ioka@carcon.co.jp）へ送付してください。\n件名：オートリースサービス審査依頼書送付について`
-      );
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setMailStatus("success");
+        setMailMsg("担当者（masaki_ioka@carcon.co.jp）へメールを自動送信しました。\n件名：オートリースサービス審査依頼書送付について");
+      } else {
+        throw new Error(data.error || "送信失敗");
+      }
     } catch (err) {
-      setMailStatus("success");
-      setMailMsg(
-        `入力が完了しました。\nJSONデータをダウンロードし、担当者（masaki_ioka@carcon.co.jp）へ送付してください。`
-      );
+      setMailStatus("error");
+      setMailMsg(`メール送信に失敗しました（${err.message}）。\nJSONをダウンロードして担当者へ直接送付してください。`);
     }
   };
 
